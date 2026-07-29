@@ -1,0 +1,10 @@
+{
+  "name": "Remix Gerenciador de Documentos de Campanha",
+  "description": "Sistema de gestão, organização por zonas eleitorais, nuvem e backup em Excel para documentos de campanha.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
