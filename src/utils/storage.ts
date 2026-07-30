@@ -1,4 +1,4 @@
-﻿import { CampaignUser, AuditLog, SystemPermissions, CloudSyncState, ElectoralZone, CampaignRole } from '../types';
+import { CampaignUser, AuditLog, SystemPermissions, CloudSyncState, ElectoralZone, CampaignRole } from '../types';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const STORAGE_KEYS = {
@@ -469,6 +469,75 @@ export async function syncUserToSupabase(user: CampaignUser): Promise<boolean> {
     }
     return false;
   }
+}
+
+export async function fetchUsersFromSupabase(): Promise<CampaignUser[]> {
+  if (!isSupabaseConfigured) return getUsers();
+  try {
+    const { data, error } = await supabase
+      .from('campaign_users')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Erro ao carregar usuários do Supabase:', error.message);
+      return getUsers();
+    }
+
+    if (data && Array.isArray(data)) {
+      const localUsers = getUsers();
+      const localMap = new Map<string, CampaignUser>();
+      localUsers.forEach(u => localMap.set(u.id, u));
+
+      const remoteUsers: CampaignUser[] = data.map((row: any) => {
+        const localUser = localMap.get(row.id);
+        const docs = row.documents || {};
+
+        if (localUser?.documents) {
+          (Object.keys(localUser.documents) as Array<keyof typeof localUser.documents>).forEach(k => {
+            if (localUser.documents[k]?.dataUrl && !docs[k]?.dataUrl) {
+              docs[k] = { ...docs[k], dataUrl: localUser.documents[k]?.dataUrl };
+            }
+          });
+        }
+
+        return {
+          id: row.id,
+          fullName: row.full_name || '',
+          role: (row.role === 'Equipe de rua' ? 'Divulgador' : row.role) as CampaignRole,
+          coordinatorName: row.coordinator_name || undefined,
+          deputadoEstadual: row.deputado_estadual || undefined,
+          socialMedia: row.social_media || undefined,
+          pixKey: row.pix_key || '',
+          whatsapp: row.whatsapp || '',
+          address: row.address || '',
+          electoralZone: (row.electoral_zone || '176') as ElectoralZone,
+          status: (row.status || 'PENDENTE') as any,
+          syncedToCloud: true,
+          createdAt: row.created_at || new Date().toISOString(),
+          updatedAt: row.updated_at || new Date().toISOString(),
+          documents: docs
+        };
+      });
+
+      localUsers.forEach(u => {
+        if (!remoteUsers.some(r => r.id === u.id)) {
+          remoteUsers.unshift(u);
+        }
+      });
+
+      inMemoryUsersCache = remoteUsers;
+      try {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(remoteUsers));
+      } catch (e) {
+        console.warn('Erro ao salvar em localStorage:', e);
+      }
+      return remoteUsers;
+    }
+  } catch (err) {
+    console.error('Falha ao consultar cadastros no Supabase:', err);
+  }
+  return getUsers();
 }
 
 export function saveUser(newUser: CampaignUser): void {

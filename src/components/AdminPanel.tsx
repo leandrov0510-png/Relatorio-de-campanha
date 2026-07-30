@@ -35,6 +35,7 @@ import {
 import { CampaignUser, AuditLog, SystemPermissions, ElectoralZone, CampaignRole, DocumentAttachment } from '../types';
 import {
   getUsers,
+  fetchUsersFromSupabase,
   deleteUser,
   saveUser,
   getLogs,
@@ -100,6 +101,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
     setLogs(getLogs());
     setPermissions(getPermissions());
     setSyncState(getSyncState());
+
+    fetchUsersFromSupabase().then((remoteUsers) => {
+      setUsers(remoteUsers);
+      setSyncState(getSyncState());
+    });
   }, []);
 
   useEffect(() => {
