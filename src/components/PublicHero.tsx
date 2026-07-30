@@ -37,8 +37,7 @@ export const PublicHero: React.FC<PublicHeroProps> = ({
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-emerald-300 text-xs font-semibold backdrop-blur-md shadow-inner flex-wrap justify-center">
             <Smartphone className="w-4 h-4 text-emerald-400" />
             <span>Acesso Celular & Computador</span>
-            <span>&bull;</span>
-            <span className="text-blue-300">{users.length} Cadastros Registrados</span>
+            <span className="text-blue-300 font-bold">| {users.length} Cadastros Registrados</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
@@ -49,24 +48,15 @@ export const PublicHero: React.FC<PublicHeroProps> = ({
             Qualquer integrante, voluntário ou liderança pode realizar o seu próprio cadastro ou cadastrar outros membros da equipe diretamente de qualquer aparelho celular.
           </p>
 
-          {/* Action CTAs */}
-          <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-lg mx-auto">
+          {/* Action CTA */}
+          <div className="pt-2 max-w-md mx-auto">
             {/* Cadastrar a mim mesmo / Cadastrar terceiros */}
             <button
               onClick={onOpenRegister}
-              className="w-full py-4 px-5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-emerald-500/25 border border-emerald-300/40 flex items-center justify-center gap-2.5 transition-transform active:scale-98 cursor-pointer"
+              className="w-full py-4.5 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-base rounded-2xl shadow-xl shadow-emerald-500/25 border border-emerald-300/40 flex items-center justify-center gap-3 transition-all active:scale-98 cursor-pointer"
             >
-              <UserPlus className="w-5 h-5" />
+              <UserPlus className="w-6 h-6" />
               <span>Realizar Cadastramento</span>
-            </button>
-
-            {/* Login Administrativo Button */}
-            <button
-              onClick={onOpenAdminLogin}
-              className="w-full py-4 px-5 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-2xl border border-white/20 backdrop-blur-md flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-98 cursor-pointer"
-            >
-              <Lock className="w-5 h-5 text-blue-400" />
-              <span>Painel Administrativo</span>
             </button>
           </div>
 

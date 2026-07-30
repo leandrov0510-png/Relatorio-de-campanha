@@ -134,12 +134,17 @@ export default function App() {
             <div className="font-medium text-slate-300">
               Sistema de Gerenciamento de Documentos de Campanha Eleitoral &copy; {new Date().getFullYear()}
             </div>
-            <div className="flex items-center gap-4 text-slate-400">
+            <div className="flex flex-wrap items-center justify-center gap-3 text-slate-400 text-xs">
               <span>Zonas: 176, 185, 276, 278, 393, 395</span>
-              <span>&bull;</span>
+              <span>|</span>
               <span>Sincronização em Nuvem</span>
-              <span>&bull;</span>
-              <span>Backup Excel</span>
+              <span>|</span>
+              <button
+                onClick={() => setIsAdminLoginModalOpen(true)}
+                className="text-slate-400 hover:text-slate-200 underline font-medium transition-colors cursor-pointer"
+              >
+                Área do Administrador (Acesso Restrito)
+              </button>
             </div>
           </div>
         </footer>

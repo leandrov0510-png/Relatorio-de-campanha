@@ -29,7 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div>
             <h1 className="text-base font-bold text-white leading-tight">
-              Campanha Doc <span className="text-blue-400 font-extrabold">&bull; Nuvem Eleitoral</span>
+              Campanha Doc <span className="text-blue-400 font-extrabold">| Nuvem Eleitoral</span>
             </h1>
             <p className="text-[11px] text-slate-400 hidden sm:block">
               Organização por Categoria, Zona Eleitoral e Backup Excel
