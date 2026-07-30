@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CampaignUser, CloudSyncState } from './types';
-import { getUsers, getSyncState } from './utils/storage';
+import { getUsers, fetchUsersFromSupabase, getSyncState } from './utils/storage';
 import { Navbar } from './components/Navbar';
 import { PublicHero } from './components/PublicHero';
 import { RegistrationFormModal } from './components/RegistrationFormModal';
@@ -25,6 +25,11 @@ export default function App() {
   const reloadData = () => {
     setUsers(getUsers());
     setSyncState(getSyncState());
+
+    fetchUsersFromSupabase().then((remoteUsers) => {
+      setUsers(remoteUsers);
+      setSyncState(getSyncState());
+    });
   };
 
   useEffect(() => {
@@ -38,10 +43,15 @@ export default function App() {
     window.addEventListener('campaign_data_changed', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
 
+    const interval = setInterval(() => {
+      reloadData();
+    }, 4000);
+
     return () => {
       window.removeEventListener('storage', handleDataChanged);
       window.removeEventListener('campaign_data_changed', handleDataChanged);
       window.removeEventListener('focus', handleDataChanged);
+      clearInterval(interval);
     };
   }, []);
 

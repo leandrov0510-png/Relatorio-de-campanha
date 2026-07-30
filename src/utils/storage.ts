@@ -526,9 +526,11 @@ export async function fetchUsersFromSupabase(): Promise<CampaignUser[]> {
         };
       });
 
+      // Inclui apenas usuários locais que NÃO sejam dados de exemplo estáticos
+      const sampleIds = new Set(SAMPLE_USERS.map(s => s.id));
       localUsers.forEach(u => {
-        if (!remoteUsers.some(r => r.id === u.id)) {
-          remoteUsers.unshift(u);
+        if (!remoteUsers.some(r => r.id === u.id) && (!sampleIds.has(u.id) || remoteUsers.length === 0)) {
+          remoteUsers.push(u);
         }
       });
 

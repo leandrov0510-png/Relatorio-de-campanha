@@ -529,13 +529,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                  {/* Refresh / Sync Cloud Button */}
+                  <button
+                    onClick={() => refreshData()}
+                    className="py-2 px-3 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+                    title="Forçar sincronização com o banco de dados em nuvem Supabase"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Sincronizar Nuvem</span>
+                  </button>
+
                   {/* Search Bar */}
                   <div className="relative flex-1 sm:w-64">
                     <input
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Buscar por nome, Pix..."
+                      placeholder="Buscar por nome, Pix, IP..."
                       className="w-full pl-9 pr-3 py-2 bg-white/5 backdrop-blur-md border border-white/15 rounded-xl text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-400"
                     />
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
