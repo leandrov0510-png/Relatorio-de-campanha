@@ -452,10 +452,13 @@ export async function syncUserToSupabase(user: CampaignUser): Promise<boolean> {
       whatsapp: user.whatsapp,
       address: user.address,
       electoral_zone: user.electoralZone,
+      registered_by: user.registeredBy || 'Próprio',
+      registration_type: user.registrationType || 'PROPRIO',
+      ip_address: user.ipAddress || 'Não identificado',
       status: user.status,
       documents: stripDocumentDataUrls(user.documents) as any,
       updated_at: new Date().toISOString()
-    });
+    } as any);
     if (error) {
       console.warn('Erro ao sincronizar usuário com o Supabase:', error.message);
       return false;
@@ -512,6 +515,9 @@ export async function fetchUsersFromSupabase(): Promise<CampaignUser[]> {
           whatsapp: row.whatsapp || '',
           address: row.address || '',
           electoralZone: (row.electoral_zone || '176') as ElectoralZone,
+          registeredBy: row.registered_by || 'Próprio',
+          registrationType: (row.registration_type || 'PROPRIO') as 'PROPRIO' | 'TERCEIROS',
+          ipAddress: row.ip_address || 'Não registrado',
           status: (row.status || 'PENDENTE') as any,
           syncedToCloud: true,
           createdAt: row.created_at || new Date().toISOString(),
@@ -559,10 +565,14 @@ export function saveUser(newUser: CampaignUser): void {
     });
   }
 
+  const registeredByText = newUser.registrationType === 'TERCEIROS' 
+    ? `cadastrado por "${newUser.registeredBy || 'Terceiro'}"` 
+    : 'cadastro próprio';
+
   addAuditLog({
-    actor: 'Formulário Público',
+    actor: newUser.registeredBy && newUser.registeredBy !== 'Próprio' ? newUser.registeredBy : 'Formulário Público',
     action: 'Novo Cadastro Efetuado',
-    details: `Cadastro do usuário "${newUser.fullName}" (${newUser.role}, Zona ${newUser.electoralZone}) registrado com sucesso.`,
+    details: `Novo cadastro efetuado para "${newUser.fullName}" (${newUser.role}, Zona ${newUser.electoralZone}, ${registeredByText}). IP: ${newUser.ipAddress || 'N/I'}.`,
     category: 'CADASTRO'
   });
 }

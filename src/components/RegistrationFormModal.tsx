@@ -16,11 +16,16 @@ import {
   Car,
   UserCheck,
   Building2,
-  Share2
+  Share2,
+  Users,
+  Globe,
+  UserPlus,
+  Loader2
 } from 'lucide-react';
 import { CampaignRole, ElectoralZone, DocumentAttachment, CampaignUser } from '../types';
 import { CameraModal } from './CameraModal';
 import { saveUser, addAuditLog } from '../utils/storage';
+import { fetchClientIp } from '../utils/ipFetcher';
 
 interface RegistrationFormModalProps {
   isOpen: boolean;
@@ -33,6 +38,10 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  // Tipo de Cadastro: Próprio ou Terceiros (Cadastrar outra pessoa)
+  const [registrationType, setRegistrationType] = useState<'PROPRIO' | 'TERCEIROS'>('PROPRIO');
+  const [registeredBy, setRegisteredBy] = useState('');
+
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<CampaignRole>('Divulgador');
   const [coordinatorName, setCoordinatorName] = useState('');
@@ -42,6 +51,10 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
   const [whatsapp, setWhatsapp] = useState('');
   const [address, setAddress] = useState('');
   const [electoralZone, setElectoralZone] = useState<ElectoralZone>('176');
+
+  // Submissão & Tela de Sucesso em Lote
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [batchSuccessUser, setBatchSuccessUser] = useState<CampaignUser | null>(null);
 
   // Attached Documents
   const [rgDoc, setRgDoc] = useState<DocumentAttachment | null>(null);
@@ -97,11 +110,15 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
     if (type === 'COMPROVANTE_ENDERECO') setComprovanteEndDoc(docObj);
   };
 
-  const resetForm = () => {
+  const resetForm = (keepRegistrantInfo: boolean = false) => {
     setFullName('');
     setRole('Divulgador');
-    setCoordinatorName('');
-    setDeputadoEstadual('');
+    if (!keepRegistrantInfo) {
+      setCoordinatorName('');
+      setDeputadoEstadual('');
+      setRegistrationType('PROPRIO');
+      setRegisteredBy('');
+    }
     setSocialMedia('');
     setPixKey('');
     setWhatsapp('');
@@ -112,11 +129,31 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
     setCnhDoc(null);
     setDocVeicular(null);
     setComprovanteEndDoc(null);
+    setBatchSuccessUser(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleClose = () => {
+    resetForm(false);
+    onClose();
+  };
+
+  const handleRegisterAnother = () => {
+    // Mantém quem cadastrou e o coordenador para permitir inserção rápida de listas/equipes
+    resetForm(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormComplete) return;
+    if (!isFormComplete || isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    // Capturar o IP público do dispositivo
+    const clientIp = await fetchClientIp();
+
+    const finalRegisteredBy = registrationType === 'TERCEIROS'
+      ? (registeredBy.trim() || 'Liderança / Terceiro')
+      : 'Próprio';
 
     const newUser: CampaignUser = {
       id: `USR-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -129,6 +166,9 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
       whatsapp: whatsapp.trim(),
       address: address.trim(),
       electoralZone,
+      registeredBy: finalRegisteredBy,
+      registrationType,
+      ipAddress: clientIp,
       status: 'PENDENTE',
       syncedToCloud: true,
       createdAt: new Date().toISOString(),
@@ -143,16 +183,9 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
     };
 
     saveUser(newUser);
-    addAuditLog({
-      actor: newUser.fullName,
-      action: 'Novo Cadastramento Efetuado',
-      details: `Novo cadastro efetuado para "${newUser.fullName}" (${newUser.role}, Zona ${newUser.electoralZone}). Status: PENDENTE de aprovação.`,
-      category: 'CADASTRO',
-    });
-
     onSuccess(newUser);
-    resetForm();
-    onClose();
+    setIsSubmitting(false);
+    setBatchSuccessUser(newUser);
   };
 
   return (
@@ -169,19 +202,152 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
                 Cadastrar Documentos de Campanha
               </h2>
               <p className="text-xs text-slate-300 mt-0.5">
-                Preencha todos os metadados requeridos e anexe os documentos legíveis.
+                Compatível com qualquer aparelho celular ou computador.
               </p>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          {/* Scrollable Form Body */}
-          <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-950/40">
+          {batchSuccessUser ? (
+            /* Tela de Sucesso com Ação de Cadastro Múltiplo Continuo */
+            <div className="p-6 sm:p-8 text-center space-y-6 animate-in zoom-in-95 duration-200 overflow-y-auto">
+              <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 border border-emerald-400/40 rounded-full flex items-center justify-center mx-auto shadow-xl">
+                <CheckCircle2 className="w-10 h-10" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 rounded-full text-emerald-300 text-xs font-bold border border-emerald-400/30">
+                  <Globe className="w-3.5 h-3.5" /> Cadastro Gravado e Sincronizado
+                </div>
+                <h2 className="text-2xl font-black text-white">
+                  {batchSuccessUser.fullName}
+                </h2>
+                <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
+                  O cadastramento foi gravado com sucesso! Os dados e o endereço IP do seu dispositivo foram enviados ao Administrador da Campanha.
+                </p>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 max-w-md mx-auto text-left text-xs space-y-2.5 shadow-lg">
+                <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                  <span className="text-slate-400">ID do Fichamento:</span>
+                  <span className="font-mono font-bold text-blue-300">{batchSuccessUser.id}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                  <span className="text-slate-400">Tipo de Cadastro:</span>
+                  <span className="font-semibold text-emerald-300">
+                    {batchSuccessUser.registrationType === 'TERCEIROS' ? `Por Terceiros (${batchSuccessUser.registeredBy})` : 'Próprio Titular'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                  <span className="text-slate-400">IP de Origem:</span>
+                  <span className="font-mono text-slate-200">{batchSuccessUser.ipAddress || 'Capturado'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Status no Painel:</span>
+                  <span className="font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-400/30">
+                    PENDENTE DE APROVAÇÃO
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleRegisterAnother}
+                  className="w-full sm:w-auto py-3.5 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg border border-emerald-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  + Cadastrar Outra Pessoa
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="w-full sm:w-auto py-3.5 px-6 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl border border-white/15 transition-all cursor-pointer"
+                >
+                  Concluir e Fechar
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Scrollable Form Body */
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-950/40">
+              {/* Seletor: Tipo de Cadastro (Próprio ou Outra Pessoa / Equipe) */}
+              <div className="bg-white/5 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-xl space-y-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-white/10 pb-2">
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  Quem você está cadastrando neste formulário?
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegistrationType('PROPRIO');
+                      setRegisteredBy('');
+                    }}
+                    className={`p-3.5 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                      registrationType === 'PROPRIO'
+                        ? 'bg-blue-500/20 border-blue-400 text-white ring-2 ring-blue-500/30'
+                        : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${registrationType === 'PROPRIO' ? 'bg-blue-500 text-white' : 'bg-white/10 text-slate-400'}`}>
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white">Estou me cadastrando</h4>
+                      <p className="text-[11px] text-slate-300 mt-0.5">Sou o próprio integrante da equipe de campanha.</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRegistrationType('TERCEIROS')}
+                    className={`p-3.5 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                      registrationType === 'TERCEIROS'
+                        ? 'bg-emerald-500/20 border-emerald-400 text-white ring-2 ring-emerald-500/30'
+                        : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${registrationType === 'TERCEIROS' ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-white/10 text-slate-400'}`}>
+                      <UserPlus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white">Estou cadastrando outra pessoa</h4>
+                      <p className="text-[11px] text-slate-300 mt-0.5">Cadastrando liderança, apoio, familiar ou equipe.</p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Campo para informar quem está efetuando o cadastro */}
+                {registrationType === 'TERCEIROS' && (
+                  <div className="pt-2 animate-in fade-in duration-200">
+                    <label className="block text-xs font-semibold text-emerald-300 mb-1">
+                      Seu Nome / Nome de quem está fazendo este cadastro <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={registeredBy}
+                        onChange={(e) => setRegisteredBy(e.target.value)}
+                        placeholder="Ex: Maria Silva (Liderança do Bairro) ou Voluntário João"
+                        className="w-full pl-9 pr-3 py-2.5 bg-emerald-950/40 border border-emerald-500/40 text-sm text-white placeholder-slate-400 rounded-xl focus:border-emerald-400 focus:outline-none transition-all"
+                        required={registrationType === 'TERCEIROS'}
+                      />
+                      <UserCheck className="w-4 h-4 text-emerald-400 absolute left-3 top-3" />
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Este nome será exibido para o Administrador indicando quem registrou este fichamento.
+                    </p>
+                  </div>
+                )}
+              </div>
             {/* Driver Alert Notice */}
             {isDriver && (
               <div className="bg-amber-500/10 backdrop-blur-md border border-amber-500/30 rounded-2xl p-4 text-amber-200 text-xs flex items-start gap-3 shadow-lg">
@@ -472,27 +638,37 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3 border-t border-white/10">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="w-full sm:w-auto py-3 px-5 rounded-xl border border-white/15 bg-white/5 text-slate-300 font-medium text-sm hover:bg-white/10 transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                disabled={!isFormComplete}
+                disabled={!isFormComplete || isSubmitting || (registrationType === 'TERCEIROS' && !registeredBy.trim())}
                 className={`w-full sm:w-auto py-3 px-8 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all ${
-                  isFormComplete
+                  isFormComplete && !isSubmitting && (registrationType === 'PROPRIO' || registeredBy.trim())
                     ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-500/25 border border-emerald-300/40 active:scale-98 cursor-pointer'
                     : 'bg-white/10 text-slate-500 cursor-not-allowed border border-white/5 shadow-none'
                 }`}
               >
-                <CheckCircle2 className="w-5 h-5" />
-                Concluir Cadastro
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin text-slate-950" />
+                    <span>Registrando & Identificando IP...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span>Enviar Cadastramento</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
-        </div>
+        )}
       </div>
+    </div>
 
       {/* Camera & File Attachment Modal */}
       {cameraModalTarget && (

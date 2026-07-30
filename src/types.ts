@@ -22,6 +22,9 @@ export interface CampaignUser {
   whatsapp: string;
   address: string;
   electoralZone: ElectoralZone;
+  registeredBy?: string; // Nome de quem realizou o cadastro (Próprio ou Nome do Terceiro/Liderança)
+  registrationType?: 'PROPRIO' | 'TERCEIROS'; // Identifica se se cadastrou ou cadastrou outro
+  ipAddress?: string; // Endereço IP público do aparelho no momento do cadastro
   documents: {
     rg?: DocumentAttachment;
     titulo?: DocumentAttachment;

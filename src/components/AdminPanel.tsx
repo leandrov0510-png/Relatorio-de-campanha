@@ -71,6 +71,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('TODOS');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('TODOS');
   const [selectedCoordinatorFilter, setSelectedCoordinatorFilter] = useState<string>('TODOS');
+  const [selectedOriginFilter, setSelectedOriginFilter] = useState<string>('TODOS');
 
   // Copy feedback state
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -148,7 +149,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
       u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.pixKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.whatsapp.includes(searchTerm) ||
-      (u.coordinatorName && u.coordinatorName.toLowerCase().includes(searchTerm.toLowerCase()));
+      (u.coordinatorName && u.coordinatorName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (u.registeredBy && u.registeredBy.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (u.ipAddress && u.ipAddress.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesZone = selectedZoneFilter === 'TODAS' || u.electoralZone === selectedZoneFilter;
     const matchesRole = selectedRoleFilter === 'TODOS' || u.role === selectedRoleFilter;
@@ -164,7 +167,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
       (u.coordinatorName && u.coordinatorName.toLowerCase().trim() === selectedCoordinatorFilter.toLowerCase().trim()) ||
       (u.role === 'Coordenador' && u.fullName.toLowerCase().trim() === selectedCoordinatorFilter.toLowerCase().trim());
 
-    return matchesName && matchesZone && matchesRole && matchesStatus && matchesCoordinator;
+    const matchesOrigin =
+      selectedOriginFilter === 'TODOS' ||
+      (selectedOriginFilter === 'PROPRIO' && (u.registrationType === 'PROPRIO' || !u.registrationType || u.registeredBy === 'Próprio')) ||
+      (selectedOriginFilter === 'TERCEIROS' && (u.registrationType === 'TERCEIROS' || (u.registeredBy && u.registeredBy !== 'Próprio')));
+
+    return matchesName && matchesZone && matchesRole && matchesStatus && matchesCoordinator && matchesOrigin;
   });
 
   // Handle User Approval
@@ -574,6 +582,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                     ))}
                   </select>
 
+                  {/* Filter Origin (Próprio vs Terceiros) */}
+                  <select
+                    value={selectedOriginFilter}
+                    onChange={(e) => setSelectedOriginFilter(e.target.value)}
+                    className="bg-slate-900/90 border border-emerald-500/30 text-emerald-200 text-xs rounded-xl px-3 py-2 focus:outline-none font-semibold"
+                  >
+                    <option value="TODOS">Todas as Origens</option>
+                    <option value="PROPRIO">Cadastros Próprios</option>
+                    <option value="TERCEIROS">Por Terceiros / Indicado</option>
+                  </select>
+
                   {/* Filter Status */}
                   <select
                     value={selectedStatusFilter}
@@ -596,15 +615,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                     setSelectedZoneFilter('TODAS');
                     setSelectedRoleFilter('TODOS');
                     setSelectedCoordinatorFilter('TODOS');
+                    setSelectedOriginFilter('TODOS');
                     setSearchTerm('');
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                    selectedStatusFilter === 'TODOS'
+                    selectedStatusFilter === 'TODOS' && selectedOriginFilter === 'TODOS'
                       ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/20'
                       : 'bg-slate-900/80 text-slate-300 border-white/10 hover:bg-white/10'
                   }`}
                 >
                   Todos ({users.length})
+                </button>
+
+                <button
+                  onClick={() => setSelectedOriginFilter('TERCEIROS')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
+                    selectedOriginFilter === 'TERCEIROS'
+                      ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-500/20'
+                      : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Por Terceiros ({users.filter((u) => u.registrationType === 'TERCEIROS' || (u.registeredBy && u.registeredBy !== 'Próprio')).length})
                 </button>
 
                 <button
@@ -631,22 +663,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                   Aprovados ({users.filter((u) => u.status === 'APROVADO' || u.status === 'VERIFICADO').length})
                 </button>
 
-                <button
-                  onClick={() => setSelectedStatusFilter('REPROVADO')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
-                    selectedStatusFilter === 'REPROVADO'
-                      ? 'bg-rose-600 text-white border-rose-400 shadow-md shadow-rose-500/20'
-                      : 'bg-rose-500/10 text-rose-300 border-rose-500/30 hover:bg-rose-500/20'
-                  }`}
-                >
-                  <UserX className="w-3.5 h-3.5" />
-                  Reprovados ({users.filter((u) => u.status === 'REPROVADO' || u.status === 'REJEITADO').length})
-                </button>
-
                 {(selectedStatusFilter !== 'TODOS' ||
                   selectedZoneFilter !== 'TODAS' ||
                   selectedRoleFilter !== 'TODOS' ||
                   selectedCoordinatorFilter !== 'TODOS' ||
+                  selectedOriginFilter !== 'TODOS' ||
                   searchTerm !== '') && (
                   <button
                     onClick={() => {
@@ -654,6 +675,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                       setSelectedZoneFilter('TODAS');
                       setSelectedRoleFilter('TODOS');
                       setSelectedCoordinatorFilter('TODOS');
+                      setSelectedOriginFilter('TODOS');
                       setSearchTerm('');
                     }}
                     className="ml-auto px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/15 rounded-xl text-xs font-semibold transition-all cursor-pointer"
@@ -696,8 +718,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                             <td className="p-4">
                               <div className="font-bold text-white text-sm">{user.fullName}</div>
                               <div className="text-[11px] text-slate-400 truncate max-w-xs">{user.address}</div>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                <span className="text-[10px] text-slate-400 font-mono">{user.id}</span>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                <span className="text-[10px] text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded">{user.id}</span>
+                                {user.registeredBy && user.registeredBy !== 'Próprio' ? (
+                                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold" title="Cadastrado por Terceiro / Liderança">
+                                    Cadastrado por: {user.registeredBy}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-blue-500/10 text-blue-300 border border-blue-500/20 px-1.5 py-0.5 rounded font-medium" title="Próprio Cadastro">
+                                    Cadastro Próprio
+                                  </span>
+                                )}
+                                {user.ipAddress && (
+                                  <span className="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded font-mono" title="Endereço IP do Aparelho">
+                                    IP: {user.ipAddress}
+                                  </span>
+                                )}
                                 {user.coordinatorName && (
                                   <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded font-medium" title="Coordenador Responsável">
                                     Coord: {user.coordinatorName}

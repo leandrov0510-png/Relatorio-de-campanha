@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Upload, Lock, Cloud, CheckCircle2, FileSpreadsheet } from 'lucide-react';
+import { Shield, Upload, Lock, Cloud, Share2 } from 'lucide-react';
 import { CloudSyncState } from '../types';
 
 interface NavbarProps {
@@ -8,6 +8,7 @@ interface NavbarProps {
   onOpenRegister: () => void;
   onOpenAdminLogin: () => void;
   onOpenAdminPanel: () => void;
+  onOpenShareModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -16,6 +17,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenRegister,
   onOpenAdminLogin,
   onOpenAdminPanel,
+  onOpenShareModal,
 }) => {
   return (
     <header className="bg-slate-900/60 backdrop-blur-xl border-b border-white/10 sticky top-0 z-30 shadow-2xl">
@@ -42,6 +44,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Cloud className="w-3.5 h-3.5 text-emerald-400" />
             <span>Nuvem Conectada</span>
           </div>
+
+          {/* Share Link Button */}
+          {onOpenShareModal && (
+            <button
+              onClick={onOpenShareModal}
+              className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-emerald-300 font-semibold text-xs sm:text-sm rounded-xl border border-emerald-500/30 flex items-center gap-1.5 backdrop-blur-md transition-all cursor-pointer"
+              title="Compartilhar Link Público do Celular"
+            >
+              <Share2 className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Compartilhar</span>
+            </button>
+          )}
 
           {/* Primary CTA button "Cadastramento" */}
           <button

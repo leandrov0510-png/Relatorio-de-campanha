@@ -6,6 +6,7 @@ import { PublicHero } from './components/PublicHero';
 import { RegistrationFormModal } from './components/RegistrationFormModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminPanel } from './components/AdminPanel';
+import { SharePublicLinkModal } from './components/SharePublicLinkModal';
 import { CheckCircle2, X } from 'lucide-react';
 
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
 
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState<boolean>(false);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState<boolean>(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
 
   const [users, setUsers] = useState<CampaignUser[]>([]);
   const [syncState, setSyncState] = useState<CloudSyncState>(getSyncState());
@@ -83,6 +85,7 @@ export default function App() {
             onOpenRegister={() => setIsRegisterModalOpen(true)}
             onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
             onOpenAdminPanel={() => setCurrentView('admin')}
+            onOpenShareModal={() => setIsShareModalOpen(true)}
           />
         </div>
       )}
@@ -147,6 +150,12 @@ export default function App() {
           setIsAdminLoggedIn(true);
           setCurrentView('admin');
         }}
+      />
+
+      {/* Share Link Modal */}
+      <SharePublicLinkModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
     </div>
   );
