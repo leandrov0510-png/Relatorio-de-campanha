@@ -1,13 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    
+    <title>Portal da Campanha Eleitoral - Fichamento & Gestão de Equipe</title>
+    
+    <meta name="description" content="Portal oficial de cadastramento de voluntários, lideranças e equipe de campanha eleitoral. Acesso direto por Celular (Android/iOS), Tablet e Computador." />
+    <meta name="theme-color" content="#020617" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS Apple Mobile Web App -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Campanha Eleitoral" />
+
+    <!-- PWA Manifest Link -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph (Preview no WhatsApp, Telegram, Facebook, Instagram) -->
+    <meta property="og:title" content="Portal da Campanha Eleitoral - Cadastramento de Equipe" />
+    <meta property="og:description" content="Cadastre-se ou cadastre integrantes da equipe de campanha diretamente pelo celular ou computador." />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   </head>
-  <body>
+  <body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-blue-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
