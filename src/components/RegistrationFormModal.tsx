@@ -26,6 +26,7 @@ import { CampaignRole, ElectoralZone, DocumentAttachment, CampaignUser } from '.
 import { CameraModal } from './CameraModal';
 import { saveUser, addAuditLog } from '../utils/storage';
 import { fetchClientIp } from '../utils/ipFetcher';
+import { ErrorBoundary } from './ErrorBoundary';
 
 interface RegistrationFormModalProps {
   isOpen: boolean;
@@ -70,17 +71,18 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
 
   const isDriver = role === 'Motorista';
 
-  // Validation checks - Basic fields are required, documents recommended
-  const isNameValid = fullName.trim().split(' ').filter(Boolean).length >= 2;
-  const isPixValid = pixKey.trim().length >= 3;
-  const isWhatsappValid = whatsapp.replace(/\D/g, '').length >= 10;
-  const isAddressValid = address.trim().length >= 5;
+  // Validation checks - Basic fields are required, documents recommended (Safe null/undefined string protections)
+  const isNameValid = Boolean(fullName && typeof fullName === 'string' && fullName.trim().split(' ').filter(Boolean).length >= 2);
+  const isPixValid = Boolean(pixKey && typeof pixKey === 'string' && pixKey.trim().length >= 3);
+  const isWhatsappValid = Boolean(whatsapp && typeof whatsapp === 'string' && whatsapp.replace(/\D/g, '').length >= 10);
+  const isAddressValid = Boolean(address && typeof address === 'string' && address.trim().length >= 5);
 
   const isFormComplete = isNameValid && isPixValid && isWhatsappValid && isAddressValid;
 
-  const handleWhatsappChange = (value: string) => {
+  const handleWhatsappChange = (value: string | undefined | null) => {
     // Auto format whatsapp mask (XX) XXXXX-XXXX
-    const digits = value.replace(/\D/g, '').slice(0, 11);
+    const strVal = String(value || '');
+    const digits = strVal.replace(/\D/g, '').slice(0, 11);
     if (digits.length <= 2) {
       setWhatsapp(digits ? `(${digits}` : '');
     } else if (digits.length <= 7) {
@@ -189,7 +191,7 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
   };
 
   return (
-    <>
+    <ErrorBoundary fallbackTitle="Ocorreu um imprevisto ao carregar o formulário">
       <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 backdrop-blur-xl p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
         <div className="bg-slate-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-white/15 my-auto flex flex-col max-h-[92vh] text-slate-100">
           {/* Top Banner */}
@@ -689,7 +691,7 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
           onCapture={(fileData) => handleCaptureDoc(cameraModalTarget, fileData)}
         />
       )}
-    </>
+    </ErrorBoundary>
   );
 };
 
