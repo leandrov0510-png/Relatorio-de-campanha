@@ -8,6 +8,8 @@ import { RegistrationFormModal } from './components/RegistrationFormModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminPanel } from './components/AdminPanel';
 import { SharePublicLinkModal } from './components/SharePublicLinkModal';
+import { DocumentViewerModal } from './components/DocumentViewerModal';
+import { DocumentAttachment } from './types';
 import { CheckCircle2, X } from 'lucide-react';
 
 export default function App() {
@@ -23,6 +25,10 @@ export default function App() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Document Viewer Modal State (Abocado via Hiperlink do Excel)
+  const [viewerDoc, setViewerDoc] = useState<DocumentAttachment | null>(null);
+  const [viewerUserName, setViewerUserName] = useState<string>('');
+
   const reloadData = () => {
     setUsers(getUsers());
     setSyncState(getSyncState());
@@ -35,6 +41,31 @@ export default function App() {
 
   useEffect(() => {
     reloadData();
+
+    // Checar se a página foi aberta por um Hiperlink de documento vindo da planilha Excel
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetUserId = urlParams.get('userId');
+    const targetDocType = urlParams.get('doc');
+
+    if (targetUserId && targetDocType) {
+      fetchUsersFromSupabase().then((allUsers) => {
+        const user = allUsers.find((u) => u.id === targetUserId);
+        if (user && user.documents) {
+          const docMap: Record<string, DocumentAttachment | undefined> = {
+            RG: user.documents.rg,
+            TITULO: user.documents.titulo,
+            CNH: user.documents.cnh,
+            DOC_VEICULAR: user.documents.docVeicular,
+            COMPROVANTE_ENDERECO: user.documents.comprovanteEndereco,
+          };
+          const doc = docMap[targetDocType];
+          if (doc) {
+            setViewerDoc(doc);
+            setViewerUserName(user.fullName);
+          }
+        }
+      });
+    }
 
     const handleDataChanged = () => {
       reloadData();
@@ -199,6 +230,21 @@ export default function App() {
       <SharePublicLinkModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
+      />
+
+      {/* Document Viewer Modal (Disparado quando acessado por Hiperlink do Excel) */}
+      <DocumentViewerModal
+        isOpen={Boolean(viewerDoc)}
+        doc={viewerDoc}
+        userName={viewerUserName}
+        onClose={() => {
+          setViewerDoc(null);
+          setViewerUserName('');
+          // Limpa os parâmetros de URL para visualização limpa
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }}
       />
     </div>
   );

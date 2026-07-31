@@ -1,13 +1,23 @@
 import * as XLSX from 'xlsx';
 import { CampaignUser, AuditLog } from '../types';
 
+function buildDocUrl(userId: string, docType: string, dataUrl?: string): string {
+  if (!dataUrl) return '';
+  if (dataUrl.startsWith('http://') || dataUrl.startsWith('https://')) {
+    return dataUrl;
+  }
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://relatorio-de-campanha.vercel.app';
+  return `${appOrigin}/?userId=${encodeURIComponent(userId)}&doc=${encodeURIComponent(docType)}`;
+}
+
 export function exportUsersToExcel(users: CampaignUser[], logs: AuditLog[]) {
-  // 1. Sheet of Registered Users
+  // 1. Sheet of Registered Users with Clickable Document Hyperlinks
   const userRows = users.map((u) => {
-    const hasRg = u.documents.rg ? 'Anexado' : 'Ausente';
-    const hasTitulo = u.documents.titulo ? 'Anexado' : 'Ausente';
-    const hasCnh = u.documents.cnh ? 'Anexado' : 'Não exigido/Ausente';
-    const hasDocVeic = u.documents.docVeicular ? 'Anexado' : 'Não exigido/Ausente';
+    const rgUrl = u.documents.rg?.dataUrl ? buildDocUrl(u.id, 'RG', u.documents.rg.dataUrl) : '';
+    const tituloUrl = u.documents.titulo?.dataUrl ? buildDocUrl(u.id, 'TITULO', u.documents.titulo.dataUrl) : '';
+    const cnhUrl = u.documents.cnh?.dataUrl ? buildDocUrl(u.id, 'CNH', u.documents.cnh.dataUrl) : '';
+    const docVeicUrl = u.documents.docVeicular?.dataUrl ? buildDocUrl(u.id, 'DOC_VEICULAR', u.documents.docVeicular.dataUrl) : '';
+    const compEndUrl = u.documents.comprovanteEndereco?.dataUrl ? buildDocUrl(u.id, 'COMPROVANTE_ENDERECO', u.documents.comprovanteEndereco.dataUrl) : '';
 
     return {
       'ID do Cadastro': u.id,
@@ -23,21 +33,23 @@ export function exportUsersToExcel(users: CampaignUser[], logs: AuditLog[]) {
       'Cadastrado Por': u.registeredBy || 'Próprio',
       'Tipo de Cadastro': u.registrationType === 'TERCEIROS' ? 'Por Terceiros' : 'Próprio Titular',
       'IP de Origem': u.ipAddress || 'Não registrado',
-      'RG': hasRg,
-      'Título de Eleitor': hasTitulo,
-      'CNH (Motoristas)': hasCnh,
-      'Doc. Veicular (Motoristas)': hasDocVeic,
       'Status': u.status,
       'Sincronizado Nuvem': u.syncedToCloud ? 'SIM' : 'NÃO',
+      'Link Documento RG': rgUrl ? { f: `HYPERLINK("${rgUrl}", "🔗 Abrir RG")` } : 'Sem Anexo',
+      'Link Título Eleitor': tituloUrl ? { f: `HYPERLINK("${tituloUrl}", "🔗 Abrir Título")` } : 'Sem Anexo',
+      'Link CNH (Motorista)': cnhUrl ? { f: `HYPERLINK("${cnhUrl}", "🔗 Abrir CNH")` } : 'Sem Anexo',
+      'Link Doc. Veicular': docVeicUrl ? { f: `HYPERLINK("${docVeicUrl}", "🔗 Abrir Doc Veicular")` } : 'Sem Anexo',
+      'Link Comprovante Endereço': compEndUrl ? { f: `HYPERLINK("${compEndUrl}", "🔗 Abrir Comprovante")` } : 'Sem Anexo',
       'Data de Cadastro': new Date(u.createdAt).toLocaleString('pt-BR'),
     };
   });
 
-  // 2. Sheet of Document Inventory Details
+  // 2. Sheet of Document Inventory Details with Hyperlinks
   const docRows: any[] = [];
   users.forEach((u) => {
     Object.entries(u.documents).forEach(([docKey, doc]) => {
-      if (doc) {
+      if (doc && doc.dataUrl) {
+        const docUrl = buildDocUrl(u.id, doc.type, doc.dataUrl);
         docRows.push({
           'ID do Usuário': u.id,
           'Nome Usuário': u.fullName,
@@ -45,6 +57,7 @@ export function exportUsersToExcel(users: CampaignUser[], logs: AuditLog[]) {
           'Nome do Arquivo': doc.name,
           'Formato': doc.fileType,
           'Data de Envio': new Date(doc.uploadedAt).toLocaleString('pt-BR'),
+          'Visualizar Documento (Hiperlink)': { f: `HYPERLINK("${docUrl}", "🔗 Clique para Visualizar Documento (${doc.type})")` },
           'Tamanho do Arquivo (aprox)': doc.dataUrl.length > 0 ? `${Math.round(doc.dataUrl.length / 1024)} KB` : 'N/A'
         });
       }
@@ -69,11 +82,20 @@ export function exportUsersToExcel(users: CampaignUser[], logs: AuditLog[]) {
 
   // Set column widths
   wsUsers['!cols'] = [
-    { wch: 15 }, { wch: 30 }, { wch: 18 }, { wch: 15 },
-    { wch: 25 }, { wch: 18 }, { wch: 35 }, { wch: 12 },
-    { wch: 18 }, { wch: 22 }, { wch: 25 }, { wch: 15 },
-    { wch: 18 }, { wch: 20 }
+    { wch: 15 }, { wch: 30 }, { wch: 18 }, { wch: 22 },
+    { wch: 22 }, { wch: 20 }, { wch: 15 }, { wch: 25 },
+    { wch: 18 }, { wch: 35 }, { wch: 18 }, { wch: 18 },
+    { wch: 18 }, { wch: 15 }, { wch: 18 }, { wch: 22 },
+    { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
+    { wch: 20 }
   ];
+
+  if (docRows.length > 0) {
+    wsDocs['!cols'] = [
+      { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 30 },
+      { wch: 12 }, { wch: 22 }, { wch: 45 }, { wch: 20 }
+    ];
+  }
 
   XLSX.utils.book_append_sheet(wb, wsUsers, 'Usuários Cadastrados');
   XLSX.utils.book_append_sheet(wb, wsDocs, 'Inventário de Anexos');
