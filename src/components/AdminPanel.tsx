@@ -37,6 +37,7 @@ import {
   getUsers,
   fetchUsersFromSupabase,
   deleteUser,
+  registerDeletedUserId,
   saveUser,
   getLogs,
   clearLogs,
@@ -174,7 +175,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'campaign_users' },
-          () => {
+          (payload: any) => {
+            if (payload.eventType === 'DELETE' && payload.old?.id) {
+              registerDeletedUserId(payload.old.id);
+            }
             refreshData();
           }
         )
@@ -337,8 +341,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
 
   // Handle User Deletion
   const handleDeleteUser = (userId: string, userName: string) => {
-    if (confirm(`Tem certeza de que deseja excluir o cadastro de "${userName}"? Esta ação é irreversível.`)) {
+    if (
+      confirm(
+        `ATENÇÃO: Deseja EXCLUIR PERMANENTEMENTE o cadastro de "${userName}"?\n\nEsta ação excluirá o registro definitivamente da nuvem Supabase e do banco de dados local.`
+      )
+    ) {
       deleteUser(userId);
+      setAdminToastMessage(`O cadastro de "${userName}" foi excluído permanentemente.`);
       refreshData();
     }
   };

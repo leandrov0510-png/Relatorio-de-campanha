@@ -7,7 +7,29 @@ const STORAGE_KEYS = {
   ADMIN_PASS: 'campanha_admin_pass_v1',
   PERMISSIONS: 'campanha_permissions_v1',
   SYNC: 'campanha_cloud_sync_v1',
+  DELETED_USER_IDS: 'campanha_deleted_user_ids_v1',
 };
+
+export function getDeletedUserIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.DELETED_USER_IDS);
+    if (!raw) return new Set<string>();
+    const parsed: string[] = JSON.parse(raw);
+    return new Set(parsed);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+export function registerDeletedUserId(userId: string): void {
+  try {
+    const set = getDeletedUserIds();
+    set.add(userId);
+    localStorage.setItem(STORAGE_KEYS.DELETED_USER_IDS, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.error('Error saving deleted user ID:', err);
+  }
+}
 
 // Default sample users for immediate rich preview
 const SAMPLE_USERS: CampaignUser[] = [
@@ -360,30 +382,35 @@ let inMemoryUsersCache: CampaignUser[] | null = null;
 
 export function getUsers(): CampaignUser[] {
   try {
+    const deletedIds = getDeletedUserIds();
     if (inMemoryUsersCache && inMemoryUsersCache.length > 0) {
-      return inMemoryUsersCache;
+      return inMemoryUsersCache.filter(u => !deletedIds.has(u.id));
     }
     const raw = localStorage.getItem(STORAGE_KEYS.USERS);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(SAMPLE_USERS));
-      inMemoryUsersCache = SAMPLE_USERS;
-      return SAMPLE_USERS;
+      const initial = SAMPLE_USERS.filter(u => !deletedIds.has(u.id));
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(initial));
+      inMemoryUsersCache = initial;
+      return initial;
     }
     const parsed: CampaignUser[] = JSON.parse(raw);
-    const normalized = parsed.map(u => ({
-      ...u,
-      role: (u.role === 'Equipe de rua' ? 'Divulgador' : u.role) as CampaignRole
-    })).sort((a, b) => {
-      const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
-      const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
-      if (timeA !== timeB) return timeB - timeA;
-      return b.id.localeCompare(a.id);
-    });
+    const normalized = parsed
+      .filter(u => !deletedIds.has(u.id))
+      .map(u => ({
+        ...u,
+        role: (u.role === 'Equipe de rua' ? 'Divulgador' : u.role) as CampaignRole
+      })).sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+        const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return b.id.localeCompare(a.id);
+      });
     inMemoryUsersCache = normalized;
     return normalized;
   } catch (err) {
     console.error('Error reading users from storage:', err);
-    return inMemoryUsersCache || SAMPLE_USERS;
+    const deletedIds = getDeletedUserIds();
+    return (inMemoryUsersCache || SAMPLE_USERS).filter(u => !deletedIds.has(u.id));
   }
 }
 
@@ -544,21 +571,25 @@ export async function fetchUsersFromSupabase(): Promise<CampaignUser[]> {
         }
       });
 
+      // Filtrar permanentemente qualquer usuário presente na lista de exclusão
+      const deletedIds = getDeletedUserIds();
+      const finalCleanUsers = remoteUsers.filter(r => !deletedIds.has(r.id));
+
       // Ordenação estática e determinística por data de criação decrescente
-      remoteUsers.sort((a, b) => {
+      finalCleanUsers.sort((a, b) => {
         const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
         const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
         if (timeA !== timeB) return timeB - timeA;
         return b.id.localeCompare(a.id);
       });
 
-      inMemoryUsersCache = remoteUsers;
+      inMemoryUsersCache = finalCleanUsers;
       try {
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(remoteUsers));
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(finalCleanUsers));
       } catch (e) {
         console.warn('Erro ao salvar em localStorage:', e);
       }
-      return remoteUsers;
+      return finalCleanUsers;
     }
   } catch (err) {
     console.error('Falha ao consultar cadastros no Supabase:', err);
@@ -598,33 +629,43 @@ export function saveUser(newUser: CampaignUser): void {
 }
 
 export function deleteUser(userId: string): void {
-  let users = getUsers();
-  const target = users.find(u => u.id === userId);
-  users = users.filter(u => u.id !== userId);
-  saveUsers(users);
+  // 1. Registra o ID no registro permanente de exclusões
+  registerDeletedUserId(userId);
 
+  // 2. Limpa do cache em memória
+  if (inMemoryUsersCache) {
+    inMemoryUsersCache = inMemoryUsersCache.filter(u => u.id !== userId);
+  }
+
+  // 3. Remove do localStorage
+  let currentUsers = getUsers().filter(u => u.id !== userId);
+  saveUsers(currentUsers);
+
+  // 4. Exclui permanentemente do banco do Supabase
   if (isSupabaseConfigured) {
     Promise.resolve(supabase.from('campaign_users').delete().eq('id', userId))
       .then(({ error }) => {
-        if (error) console.warn('Erro ao deletar usuário no Supabase:', error.message);
+        if (error) console.warn('Erro ao deletar usuário permanentemente no Supabase:', error.message);
+        else console.log(`Usuário ${userId} excluído permanentemente da nuvem Supabase.`);
       })
       .catch((err: any) => {
         if (err?.name === 'AbortError') {
-          console.warn('Timeout ao deletar usuário no Supabase (context deadline exceeded). Operando em modo local.');
+          console.warn('Timeout ao deletar no Supabase (context deadline exceeded). Exclusão registrada localmente.');
         } else {
           console.error('Falha ao deletar no Supabase:', err);
         }
       });
   }
 
-  if (target) {
-    addAuditLog({
-      actor: 'Administrador',
-      action: 'Exclusão de Cadastro',
-      details: `O registro do usuário "${target.fullName}" (ID: ${target.id}) foi excluído.`,
-      category: 'SEGURANCA'
-    });
-  }
+  addAuditLog({
+    actor: 'Administrador',
+    action: 'Exclusão Permanente de Cadastro',
+    details: `O registro do usuário (ID: ${userId}) foi excluído permanentemente do sistema.`,
+    category: 'SEGURANCA'
+  });
+
+  window.dispatchEvent(new Event('storage'));
+  window.dispatchEvent(new CustomEvent('campaign_data_changed'));
 }
 
 export function getLogs(): AuditLog[] {

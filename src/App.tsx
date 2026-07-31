@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CampaignUser, CloudSyncState } from './types';
-import { getUsers, fetchUsersFromSupabase, getSyncState } from './utils/storage';
+import { getUsers, fetchUsersFromSupabase, getSyncState, registerDeletedUserId } from './utils/storage';
 import { supabase, isSupabaseConfigured } from './utils/supabaseClient';
 import { Navbar } from './components/Navbar';
 import { PublicHero } from './components/PublicHero';
@@ -88,7 +88,10 @@ export default function App() {
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'campaign_users' },
-          () => {
+          (payload: any) => {
+            if (payload.eventType === 'DELETE' && payload.old?.id) {
+              registerDeletedUserId(payload.old.id);
+            }
             reloadData();
           }
         )
