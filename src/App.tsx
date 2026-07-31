@@ -43,6 +43,12 @@ export default function App() {
     window.addEventListener('storage', handleDataChanged);
     window.addEventListener('campaign_data_changed', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
+    window.addEventListener('online', handleDataChanged);
+
+    // Polling de backup a cada 10s para garantir sincronização mesmo se a conexão IP mudar ou o WebSocket cair
+    const backupInterval = setInterval(() => {
+      reloadData();
+    }, 10000);
 
     let realtimeChannel: any = null;
     if (isSupabaseConfigured) {
@@ -69,6 +75,8 @@ export default function App() {
       window.removeEventListener('storage', handleDataChanged);
       window.removeEventListener('campaign_data_changed', handleDataChanged);
       window.removeEventListener('focus', handleDataChanged);
+      window.removeEventListener('online', handleDataChanged);
+      clearInterval(backupInterval);
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }

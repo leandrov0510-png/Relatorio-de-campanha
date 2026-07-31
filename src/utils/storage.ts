@@ -531,6 +531,19 @@ export async function fetchUsersFromSupabase(): Promise<CampaignUser[]> {
         };
       });
 
+      // Inclui cadastros locais que ainda não estejam na nuvem ou não sejam dados estáticos
+      const sampleIds = new Set(SAMPLE_USERS.map(s => s.id));
+      localUsers.forEach(u => {
+        if (!remoteUsers.some(r => r.id === u.id) && (!sampleIds.has(u.id) || remoteUsers.length === 0)) {
+          remoteUsers.push(u);
+          if (isSupabaseConfigured && !u.syncedToCloud) {
+            syncUserToSupabase(u).then((success) => {
+              if (success) u.syncedToCloud = true;
+            });
+          }
+        }
+      });
+
       // Ordenação estática e determinística por data de criação decrescente
       remoteUsers.sort((a, b) => {
         const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();

@@ -120,6 +120,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
     window.addEventListener('storage', handleDataChanged);
     window.addEventListener('campaign_data_changed', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
+    window.addEventListener('online', handleDataChanged);
+
+    // Backup polling leve a cada 10s para garantir sincronização mesmo se o IP mudar ou o WebSocket cair
+    const backupInterval = setInterval(() => {
+      refreshData();
+    }, 10000);
 
     let realtimeChannel: any = null;
     if (isSupabaseConfigured) {
@@ -146,6 +152,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
       window.removeEventListener('storage', handleDataChanged);
       window.removeEventListener('campaign_data_changed', handleDataChanged);
       window.removeEventListener('focus', handleDataChanged);
+      window.removeEventListener('online', handleDataChanged);
+      clearInterval(backupInterval);
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
