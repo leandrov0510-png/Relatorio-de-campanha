@@ -189,6 +189,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
             refreshData();
           }
         )
+        .on(
+          'broadcast',
+          { event: 'update' },
+          () => {
+            refreshData();
+          }
+        )
         .subscribe();
     }
 

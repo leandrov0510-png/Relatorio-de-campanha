@@ -597,6 +597,27 @@ export async function fetchUsersFromSupabase(): Promise<CampaignUser[]> {
   return getUsers();
 }
 
+export function broadcastDataChangeSignal(): void {
+  if (isSupabaseConfigured) {
+    try {
+      const channel = supabase.channel('realtime_admin_broadcast');
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: 'broadcast',
+            event: 'update',
+            payload: { timestamp: Date.now() },
+          }).then(() => {
+            supabase.removeChannel(channel);
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Broadcast error:', e);
+    }
+  }
+}
+
 export function saveUser(newUser: CampaignUser): void {
   const users = getUsers();
   const existingIdx = users.findIndex(u => u.id === newUser.id);
@@ -626,6 +647,8 @@ export function saveUser(newUser: CampaignUser): void {
     details: `Novo cadastro efetuado para "${newUser.fullName}" (${newUser.role}, Zona ${newUser.electoralZone}, ${registeredByText}). IP: ${newUser.ipAddress || 'N/I'}.`,
     category: 'CADASTRO'
   });
+
+  broadcastDataChangeSignal();
 }
 
 export function deleteUser(userId: string): void {
@@ -664,6 +687,7 @@ export function deleteUser(userId: string): void {
     category: 'SEGURANCA'
   });
 
+  broadcastDataChangeSignal();
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('campaign_data_changed'));
 }

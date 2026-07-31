@@ -102,6 +102,13 @@ export default function App() {
             reloadData();
           }
         )
+        .on(
+          'broadcast',
+          { event: 'update' },
+          () => {
+            reloadData();
+          }
+        )
         .subscribe();
     }
 
