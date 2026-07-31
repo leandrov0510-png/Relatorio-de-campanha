@@ -46,7 +46,10 @@ export type Database = {
           electoral_zone: string
           full_name: string
           id: string
+          ip_address: string | null
           pix_key: string | null
+          registered_by: string | null
+          registration_type: string | null
           role: string
           social_media: string | null
           status: string | null
@@ -62,7 +65,10 @@ export type Database = {
           electoral_zone: string
           full_name: string
           id: string
+          ip_address?: string | null
           pix_key?: string | null
+          registered_by?: string | null
+          registration_type?: string | null
           role: string
           social_media?: string | null
           status?: string | null
@@ -78,7 +84,10 @@ export type Database = {
           electoral_zone?: string
           full_name?: string
           id?: string
+          ip_address?: string | null
           pix_key?: string | null
+          registered_by?: string | null
+          registration_type?: string | null
           role?: string
           social_media?: string | null
           status?: string | null

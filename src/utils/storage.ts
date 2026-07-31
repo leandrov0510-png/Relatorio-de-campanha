@@ -445,9 +445,9 @@ export async function syncUserToSupabase(user: CampaignUser): Promise<boolean> {
       id: user.id,
       full_name: user.fullName,
       role: user.role,
-      coordinator_name: user.coordinatorName,
-      deputado_estadual: user.deputadoEstadual,
-      social_media: user.socialMedia,
+      coordinator_name: user.coordinatorName || null,
+      deputado_estadual: user.deputadoEstadual || null,
+      social_media: user.socialMedia || null,
       pix_key: user.pixKey,
       whatsapp: user.whatsapp,
       address: user.address,
@@ -458,7 +458,7 @@ export async function syncUserToSupabase(user: CampaignUser): Promise<boolean> {
       status: user.status,
       documents: stripDocumentDataUrls(user.documents) as any,
       updated_at: new Date().toISOString()
-    } as any);
+    });
     if (error) {
       console.warn('Erro ao sincronizar usuário com o Supabase:', error.message);
       return false;
@@ -526,12 +526,12 @@ export async function fetchUsersFromSupabase(): Promise<CampaignUser[]> {
         };
       });
 
-      // Inclui apenas usuários locais que NÃO sejam dados de exemplo estáticos
-      const sampleIds = new Set(SAMPLE_USERS.map(s => s.id));
-      localUsers.forEach(u => {
-        if (!remoteUsers.some(r => r.id === u.id) && (!sampleIds.has(u.id) || remoteUsers.length === 0)) {
-          remoteUsers.push(u);
-        }
+      // Ordenação estática e determinística por data de criação decrescente
+      remoteUsers.sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+        const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return b.id.localeCompare(a.id);
       });
 
       inMemoryUsersCache = remoteUsers;
@@ -716,14 +716,15 @@ export function getSyncState(): CloudSyncState {
       return {
         isOnline: true,
         lastSyncedAt: new Date().toISOString(),
-        pendingCount: isSupabaseConfigured ? 0 : unsynced,
+        pendingCount: unsynced,
         syncing: false
       };
     }
     const state = JSON.parse(raw);
     return {
       ...state,
-      pendingCount: isSupabaseConfigured ? 0 : unsynced
+      isOnline: true,
+      pendingCount: unsynced
     };
   } catch (err) {
     return {

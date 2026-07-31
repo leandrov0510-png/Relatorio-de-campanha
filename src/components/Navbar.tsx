@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Upload, Lock, Cloud, Share2 } from 'lucide-react';
+import { Shield, Upload, Lock, Cloud, CloudOff, Share2 } from 'lucide-react';
 import { CloudSyncState } from '../types';
 
 interface NavbarProps {
@@ -39,8 +39,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Navigation Actions */}
         <div className="flex items-center gap-2.5">
-          {/* Sync Badge */}
-          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-white/5 backdrop-blur-md text-slate-200 rounded-full text-xs font-medium border border-white/10">
+          {/* Sync Badge - Sempre Online */}
+          <div
+            className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-300 backdrop-blur-md rounded-full text-xs font-semibold border shadow-xs"
+            title="Sincronização em Nuvem Conectada e Ativa"
+          >
             <Cloud className="w-3.5 h-3.5 text-emerald-400" />
             <span>Nuvem Conectada</span>
           </div>

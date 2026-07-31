@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CampaignUser, CloudSyncState } from './types';
 import { getUsers, fetchUsersFromSupabase, getSyncState } from './utils/storage';
+import { supabase, isSupabaseConfigured } from './utils/supabaseClient';
 import { Navbar } from './components/Navbar';
 import { PublicHero } from './components/PublicHero';
 import { RegistrationFormModal } from './components/RegistrationFormModal';
@@ -43,15 +44,34 @@ export default function App() {
     window.addEventListener('campaign_data_changed', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
 
-    const interval = setInterval(() => {
-      reloadData();
-    }, 4000);
+    let realtimeChannel: any = null;
+    if (isSupabaseConfigured) {
+      realtimeChannel = supabase
+        .channel('app_global_realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'campaign_users' },
+          () => {
+            reloadData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'audit_logs' },
+          () => {
+            reloadData();
+          }
+        )
+        .subscribe();
+    }
 
     return () => {
       window.removeEventListener('storage', handleDataChanged);
       window.removeEventListener('campaign_data_changed', handleDataChanged);
       window.removeEventListener('focus', handleDataChanged);
-      clearInterval(interval);
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
     };
   }, []);
 

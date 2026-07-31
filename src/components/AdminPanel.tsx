@@ -47,6 +47,7 @@ import {
   getSyncState,
   saveSyncState,
 } from '../utils/storage';
+import { supabase, isSupabaseConfigured } from '../utils/supabaseClient';
 import { exportUsersToExcel } from '../utils/excel';
 import { DocumentViewerModal } from './DocumentViewerModal';
 
@@ -120,16 +121,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
     window.addEventListener('campaign_data_changed', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
 
-    // Auto polling interval (every 2 seconds) to guarantee real-time updates
-    const interval = setInterval(() => {
-      refreshData();
-    }, 2000);
+    let realtimeChannel: any = null;
+    if (isSupabaseConfigured) {
+      realtimeChannel = supabase
+        .channel('admin_panel_realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'campaign_users' },
+          () => {
+            refreshData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'audit_logs' },
+          () => {
+            refreshData();
+          }
+        )
+        .subscribe();
+    }
 
     return () => {
       window.removeEventListener('storage', handleDataChanged);
       window.removeEventListener('campaign_data_changed', handleDataChanged);
       window.removeEventListener('focus', handleDataChanged);
-      clearInterval(interval);
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
     };
   }, [refreshData]);
 
