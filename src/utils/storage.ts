@@ -373,7 +373,12 @@ export function getUsers(): CampaignUser[] {
     const normalized = parsed.map(u => ({
       ...u,
       role: (u.role === 'Equipe de rua' ? 'Divulgador' : u.role) as CampaignRole
-    }));
+    })).sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return b.id.localeCompare(a.id);
+    });
     inMemoryUsersCache = normalized;
     return normalized;
   } catch (err) {

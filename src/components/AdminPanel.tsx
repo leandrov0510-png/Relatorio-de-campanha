@@ -192,7 +192,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
       (selectedOriginFilter === 'TERCEIROS' && (u.registrationType === 'TERCEIROS' || (u.registeredBy && u.registeredBy !== 'Próprio')));
 
     return matchesName && matchesZone && matchesRole && matchesStatus && matchesCoordinator && matchesOrigin;
-  });
+  })
+    .sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return b.id.localeCompare(a.id);
+    });
 
   // Handle User Approval
   const handleApproveUser = (user: CampaignUser) => {
