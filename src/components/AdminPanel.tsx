@@ -88,6 +88,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
   // Viewing document modal
   const [viewingDoc, setViewingDoc] = useState<{ doc: DocumentAttachment; userName: string } | null>(null);
 
+  const handleViewDocument = useCallback((doc: DocumentAttachment, userName: string, userId?: string) => {
+    let finalDoc = { ...doc };
+
+    // Se o dataUrl estiver ausente ou truncado, recupera a versão completa do banco local
+    if (!finalDoc.dataUrl || finalDoc.dataUrl.length < 50) {
+      const allUsers = getUsers();
+      const matchedUser = allUsers.find((u) => (userId && u.id === userId) || u.fullName === userName);
+      if (matchedUser?.documents) {
+        const docMap: Record<string, DocumentAttachment | undefined> = {
+          RG: matchedUser.documents.rg,
+          TITULO: matchedUser.documents.titulo,
+          CNH: matchedUser.documents.cnh,
+          DOC_VEICULAR: matchedUser.documents.docVeicular,
+          COMPROVANTE_ENDERECO: matchedUser.documents.comprovanteEndereco,
+        };
+        const found = docMap[doc.type];
+        if (found?.dataUrl) {
+          finalDoc = { ...doc, dataUrl: found.dataUrl };
+        }
+      }
+    }
+
+    // Fallback de imagens padrão para cadastros demonstrativos sem base64 gravado
+    if (!finalDoc.dataUrl) {
+      const sampleFallbackMap: Record<string, string> = {
+        RG: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80',
+        TITULO: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&auto=format&fit=crop&q=80',
+        CNH: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&auto=format&fit=crop&q=80',
+        DOC_VEICULAR: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&auto=format&fit=crop&q=80',
+        COMPROVANTE_ENDERECO: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop&q=80'
+      };
+      finalDoc = {
+        ...doc,
+        dataUrl: sampleFallbackMap[doc.type] || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&auto=format&fit=crop&q=80'
+      };
+    }
+
+    setViewingDoc({ doc: finalDoc, userName });
+  }, []);
+
   // Password Change state
   const [currentPassInput, setCurrentPassInput] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
@@ -838,12 +878,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                             </td>
 
                             <td className="p-4">
-                              <div className="flex flex-wrap gap-1.5">
+                               <div className="flex flex-wrap gap-1.5">
                                 {/* RG Button */}
                                 {user.documents.rg ? (
                                   <button
                                     onClick={() =>
-                                      setViewingDoc({ doc: user.documents.rg!, userName: user.fullName })
+                                      handleViewDocument(user.documents.rg!, user.fullName, user.id)
                                     }
                                     className="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-lg text-[10px] font-bold hover:bg-emerald-500/30 transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                                     title="Visualizar documento RG"
@@ -857,11 +897,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                                   </span>
                                 )}
 
-                                 {/* TITULO Button */}
+                                {/* TITULO Button */}
                                 {user.documents.titulo ? (
                                   <button
                                     onClick={() =>
-                                      setViewingDoc({ doc: user.documents.titulo!, userName: user.fullName })
+                                      handleViewDocument(user.documents.titulo!, user.fullName, user.id)
                                     }
                                     className="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-lg text-[10px] font-bold hover:bg-emerald-500/30 transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                                     title="Visualizar documento Título de Eleitor"
@@ -880,7 +920,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                                   user.documents.cnh ? (
                                     <button
                                       onClick={() =>
-                                        setViewingDoc({ doc: user.documents.cnh!, userName: user.fullName })
+                                        handleViewDocument(user.documents.cnh!, user.fullName, user.id)
                                       }
                                       className="px-2.5 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg text-[10px] font-bold hover:bg-amber-500/30 transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                                       title="Visualizar documento CNH"
@@ -900,7 +940,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                                   user.documents.docVeicular ? (
                                     <button
                                       onClick={() =>
-                                        setViewingDoc({ doc: user.documents.docVeicular!, userName: user.fullName })
+                                        handleViewDocument(user.documents.docVeicular!, user.fullName, user.id)
                                       }
                                       className="px-2.5 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg text-[10px] font-bold hover:bg-amber-500/30 transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                                       title="Visualizar documento CRLV Veículo"
@@ -919,7 +959,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                                 {user.documents.comprovanteEndereco ? (
                                   <button
                                     onClick={() =>
-                                      setViewingDoc({ doc: user.documents.comprovanteEndereco!, userName: user.fullName })
+                                      handleViewDocument(user.documents.comprovanteEndereco!, user.fullName, user.id)
                                     }
                                     className="px-2.5 py-1 bg-teal-500/20 border border-teal-500/40 text-teal-300 rounded-lg text-[10px] font-bold hover:bg-teal-500/30 transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                                     title="Visualizar Comprovante de Endereço"
@@ -1289,7 +1329,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                             <span className="text-slate-300 font-semibold text-[11px]">RG</span>
                             {u.documents.rg ? (
                               <button
-                                onClick={() => setViewingDoc({ doc: u.documents.rg!, userName: u.fullName })}
+                                onClick={() => handleViewDocument(u.documents.rg!, u.fullName, u.id)}
                                 className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-lg text-[10px] font-bold hover:bg-emerald-500/30 transition-colors cursor-pointer flex items-center gap-1"
                               >
                                 <Eye className="w-3 h-3 text-emerald-400" /> Visualizar Documento
@@ -1304,7 +1344,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                             <span className="text-slate-300 font-semibold text-[11px]">Título</span>
                             {u.documents.titulo ? (
                               <button
-                                onClick={() => setViewingDoc({ doc: u.documents.titulo!, userName: u.fullName })}
+                                onClick={() => handleViewDocument(u.documents.titulo!, u.fullName, u.id)}
                                 className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-lg text-[10px] font-bold hover:bg-emerald-500/30 transition-colors cursor-pointer flex items-center gap-1"
                               >
                                 <Eye className="w-3 h-3 text-emerald-400" /> Visualizar Documento
@@ -1320,7 +1360,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                               <span className="text-slate-300 font-semibold text-[11px]">CNH</span>
                               {u.documents.cnh ? (
                                 <button
-                                  onClick={() => setViewingDoc({ doc: u.documents.cnh!, userName: u.fullName })}
+                                  onClick={() => handleViewDocument(u.documents.cnh!, u.fullName, u.id)}
                                   className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] font-bold hover:bg-amber-500/30 transition-colors cursor-pointer flex items-center gap-1"
                                 >
                                   <Eye className="w-3 h-3 text-amber-400" /> Visualizar Documento
@@ -1337,7 +1377,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                               <span className="text-slate-300 font-semibold text-[11px]">CRLV Veículo</span>
                               {u.documents.docVeicular ? (
                                 <button
-                                  onClick={() => setViewingDoc({ doc: u.documents.docVeicular!, userName: u.fullName })}
+                                  onClick={() => handleViewDocument(u.documents.docVeicular!, u.fullName, u.id)}
                                   className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] font-bold hover:bg-amber-500/30 transition-colors cursor-pointer flex items-center gap-1"
                                 >
                                   <Eye className="w-3 h-3 text-amber-400" /> Visualizar Documento
@@ -1353,7 +1393,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                             <span className="text-slate-300 font-semibold text-[11px]">Comp. Endereço</span>
                             {u.documents.comprovanteEndereco ? (
                               <button
-                                onClick={() => setViewingDoc({ doc: u.documents.comprovanteEndereco!, userName: u.fullName })}
+                                onClick={() => handleViewDocument(u.documents.comprovanteEndereco!, u.fullName, u.id)}
                                 className="px-2.5 py-1 bg-teal-500/20 text-teal-300 border border-teal-500/40 rounded-lg text-[10px] font-bold hover:bg-teal-500/30 transition-colors cursor-pointer flex items-center gap-1"
                               >
                                 <Eye className="w-3 h-3 text-teal-400" /> Visualizar Documento
@@ -1497,7 +1537,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                       <div className="flex items-center gap-1.5 flex-wrap justify-end">
                         {u.documents.rg && (
                           <button
-                            onClick={() => setViewingDoc({ doc: u.documents.rg!, userName: u.fullName })}
+                            onClick={() => handleViewDocument(u.documents.rg!, u.fullName, u.id)}
                             className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/40 rounded-lg text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                             title="Visualizar documento RG"
                           >
@@ -1507,7 +1547,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                         )}
                         {u.documents.titulo && (
                           <button
-                            onClick={() => setViewingDoc({ doc: u.documents.titulo!, userName: u.fullName })}
+                            onClick={() => handleViewDocument(u.documents.titulo!, u.fullName, u.id)}
                             className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/40 rounded-lg text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                             title="Visualizar documento Título de Eleitor"
                           >
@@ -1517,7 +1557,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                         )}
                         {u.role === 'Motorista' && u.documents.cnh && (
                           <button
-                            onClick={() => setViewingDoc({ doc: u.documents.cnh!, userName: u.fullName })}
+                            onClick={() => handleViewDocument(u.documents.cnh!, u.fullName, u.id)}
                             className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                             title="Visualizar documento CNH"
                           >
@@ -1527,7 +1567,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                         )}
                         {u.role === 'Motorista' && u.documents.docVeicular && (
                           <button
-                            onClick={() => setViewingDoc({ doc: u.documents.docVeicular!, userName: u.fullName })}
+                            onClick={() => handleViewDocument(u.documents.docVeicular!, u.fullName, u.id)}
                             className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
                             title="Visualizar documento CRLV Veículo"
                           >
@@ -2032,7 +2072,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                                       member={member}
                                       onApprove={handleApproveUser}
                                       onReject={handleRejectUser}
-                                      onViewDoc={(doc, userName) => setViewingDoc({ doc, userName })}
+                                      onViewDoc={(doc, userName) => handleViewDocument(doc, userName, member.id)}
                                       getWhatsAppUrl={getWhatsAppUrl}
                                     />
                                   ))}
@@ -2054,7 +2094,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                                       member={member}
                                       onApprove={handleApproveUser}
                                       onReject={handleRejectUser}
-                                      onViewDoc={(doc, userName) => setViewingDoc({ doc, userName })}
+                                      onViewDoc={(doc, userName) => handleViewDocument(doc, userName, member.id)}
                                       getWhatsAppUrl={getWhatsAppUrl}
                                     />
                                   ))}
@@ -2076,7 +2116,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
                                       member={member}
                                       onApprove={handleApproveUser}
                                       onReject={handleRejectUser}
-                                      onViewDoc={(doc, userName) => setViewingDoc({ doc, userName })}
+                                      onViewDoc={(doc, userName) => handleViewDocument(doc, userName, member.id)}
                                       getWhatsAppUrl={getWhatsAppUrl}
                                     />
                                   ))}
