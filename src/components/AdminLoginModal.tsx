@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, KeyRound, ShieldAlert, X, ArrowRight } from 'lucide-react';
-import { getAdminPassword } from '../utils/storage';
+import { Lock, KeyRound, ShieldAlert, X, ArrowRight, Loader2 } from 'lucide-react';
+import { fetchAdminPasswordFromSupabase } from '../utils/storage';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -15,22 +15,33 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const currentPass = getAdminPassword();
+    setIsLoading(true);
+    setError(null);
 
-    // A validação exige ESTRITAMENTE a senha atualmente registrada no sistema.
-    // Se a senha for alterada em configurações, a nova senha é a ÚNICA aceita.
-    if (password.trim() === currentPass) {
-      setError(null);
-      setPassword('');
-      onLoginSuccess();
-      onClose();
-    } else {
-      setError('Senha de acesso incorreta. Verifique a senha atual registrada no sistema.');
+    try {
+      // Validação estrita: busca a nova senha sincronizada na nuvem Supabase
+      const currentPass = await fetchAdminPasswordFromSupabase();
+
+      if (password.trim() === currentPass) {
+        setError(null);
+        setPassword('');
+        setIsLoading(false);
+        onLoginSuccess();
+        onClose();
+      } else {
+        setIsLoading(false);
+        setError('Senha incorreta. Apenas a nova senha alterada no sistema é aceita.');
+      }
+    } catch (err) {
+      console.error('Erro ao verificar senha:', err);
+      setIsLoading(false);
+      setError('Erro ao validar credenciais. Tente novamente.');
     }
   };
 
@@ -79,6 +90,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 placeholder="Digite a senha de administrador"
                 className="w-full pl-10 pr-4 py-3 bg-white/5 backdrop-blur-md border border-white/15 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 transition-all font-mono"
                 autoFocus
+                disabled={isLoading}
                 required
               />
               <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -89,16 +101,27 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <button
               type="button"
               onClick={onClose}
+              disabled={isLoading}
               className="flex-1 py-2.5 px-4 rounded-xl border border-white/15 bg-white/5 text-slate-300 font-medium text-sm hover:bg-white/10 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/25 border border-blue-400/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              disabled={isLoading}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/25 border border-blue-400/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             >
-              Acessar Painel
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verificando...
+                </>
+              ) : (
+                <>
+                  Acessar Painel
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </form>

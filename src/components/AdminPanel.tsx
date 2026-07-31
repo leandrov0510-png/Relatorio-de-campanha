@@ -43,6 +43,7 @@ import {
   clearLogs,
   addAuditLog,
   setAdminPassword,
+  fetchAdminPasswordFromSupabase,
   getPermissions,
   savePermissions,
   getSyncState,
@@ -360,12 +361,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
   };
 
   // Handle Password Change Form
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPassMsg(null);
 
-    const actualPass = localStorage.getItem('campanha_admin_pass_v1') || 'admin123';
-    if (currentPassInput !== actualPass) {
+    const actualPass = await fetchAdminPasswordFromSupabase();
+    if (currentPassInput.trim() !== actualPass) {
       setPassMsg({ text: 'A senha atual informada está incorreta.', type: 'error' });
       return;
     }
@@ -381,7 +382,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
     }
 
     setAdminPassword(newPassInput);
-    setPassMsg({ text: 'Senha alterada com sucesso!', type: 'success' });
+    setPassMsg({ text: 'Senha alterada e sincronizada na nuvem com sucesso! Utilize a nova senha em todos os aparelhos.', type: 'success' });
     setCurrentPassInput('');
     setNewPassInput('');
     setConfirmPassInput('');

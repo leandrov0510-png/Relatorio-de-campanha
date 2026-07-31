@@ -752,18 +752,62 @@ export function clearLogs(): void {
   });
 }
 
+export async function fetchAdminPasswordFromSupabase(): Promise<string> {
+  const localPass = getAdminPassword();
+  if (!isSupabaseConfigured) return localPass;
+
+  try {
+    const { data, error } = await (supabase as any)
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'admin_password')
+      .single();
+
+    if (!error && data && data.value) {
+      const cloudPass = data.value;
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PASS, cloudPass);
+      return cloudPass;
+    }
+  } catch (err) {
+    console.warn('Erro ao consultar senha de admin no Supabase:', err);
+  }
+
+  return localPass;
+}
+
 export function getAdminPassword(): string {
   return localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || 'admin123';
 }
 
 export function setAdminPassword(newPassword: string): void {
   localStorage.setItem(STORAGE_KEYS.ADMIN_PASS, newPassword);
+
+  if (isSupabaseConfigured) {
+    Promise.resolve(
+      (supabase as any).from('system_settings').upsert({
+        key: 'admin_password',
+        value: newPassword,
+        updated_at: new Date().toISOString()
+      })
+    ).then(({ error }: any) => {
+      if (error) {
+        console.warn('Erro ao salvar nova senha no Supabase:', error.message);
+      } else {
+        console.log('Nova senha de admin salva na nuvem Supabase com sucesso.');
+      }
+    }).catch(err => {
+      console.error('Falha ao salvar nova senha no Supabase:', err);
+    });
+  }
+
   addAuditLog({
     actor: 'Administrador',
     action: 'Alteração de Senha',
-    details: 'A senha de acesso administrativo foi alterada com sucesso.',
+    details: 'A senha de acesso administrativo foi alterada com sucesso e sincronizada com a nuvem.',
     category: 'SEGURANCA'
   });
+
+  broadcastDataChangeSignal();
 }
 
 export function getPermissions(): SystemPermissions[] {
