@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, KeyRound, ShieldAlert, X, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Lock, KeyRound, ShieldAlert, X, ArrowRight } from 'lucide-react';
 import { getAdminPassword } from '../utils/storage';
 
 interface AdminLoginModalProps {
@@ -21,14 +21,16 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const currentPass = getAdminPassword();
-    const validPasswords = [currentPass, 'admin123', 'admin2026', 'admin_principal', 'admin2'];
 
-    if (validPasswords.includes(password.trim())) {
+    // A validação exige ESTRITAMENTE a senha atualmente registrada no sistema.
+    // Se a senha for alterada em configurações, a nova senha é a ÚNICA aceita.
+    if (password.trim() === currentPass) {
       setError(null);
+      setPassword('');
       onLoginSuccess();
       onClose();
     } else {
-      setError('Senha de acesso incorreta. Tente novamente ou verifique as credenciais.');
+      setError('Senha de acesso incorreta. Verifique a senha atual registrada no sistema.');
     }
   };
 
@@ -38,6 +40,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         {/* Header */}
         <div className="bg-white/5 backdrop-blur-md text-white p-6 relative border-b border-white/10">
           <button
+            type="button"
             onClick={onClose}
             className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
           >
@@ -63,7 +66,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Senha do Painel de Controle
+              Senha de Acesso do Administrador
             </label>
             <div className="relative">
               <input
@@ -80,9 +83,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               />
               <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
             </div>
-            <p className="text-[11px] text-slate-400 mt-1.5">
-              Senhas de Administrador Principal: <code className="bg-white/10 px-1.5 py-0.5 rounded text-blue-300 font-bold border border-white/10">admin123</code> ou <code className="bg-white/10 px-1.5 py-0.5 rounded text-blue-300 font-bold border border-white/10">admin2026</code>
-            </p>
           </div>
 
           <div className="pt-2 flex items-center gap-3">
