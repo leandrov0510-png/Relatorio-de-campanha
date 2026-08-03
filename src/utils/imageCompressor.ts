@@ -4,9 +4,9 @@
  */
 export async function compressImageDataUrl(
   dataUrl: string,
-  maxWidth = 800,
-  maxHeight = 800,
-  quality = 0.65
+  maxWidth = 1280,
+  maxHeight = 1280,
+  quality = 0.82
 ): Promise<string> {
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
     return dataUrl; // Return as-is if not a base64 image (e.g. pdf or external url)

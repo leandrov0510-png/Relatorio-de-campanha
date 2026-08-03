@@ -1,4 +1,4 @@
-import { CampaignUser, AuditLog, SystemPermissions, CloudSyncState, ElectoralZone, CampaignRole } from '../types';
+import { CampaignUser, AuditLog, SystemPermissions, CloudSyncState, ElectoralZone, CampaignRole, DocumentAttachment } from '../types';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const STORAGE_KEYS = {
@@ -454,25 +454,118 @@ export function saveUsers(users: CampaignUser[]): void {
   }
 }
 
-// Remove dataUrls (base64) dos documentos antes de enviar ao Supabase
-// para evitar payloads gigantes que causam "context deadline exceeded"
-function stripDocumentDataUrls(documents: CampaignUser['documents']): CampaignUser['documents'] {
-  if (!documents) return documents;
-  const stripped: typeof documents = {} as typeof documents;
-  (Object.keys(documents) as Array<keyof typeof documents>).forEach((key) => {
-    const doc = documents[key];
-    if (doc) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { dataUrl: _omitted, ...docMeta } = doc as any;
-      (stripped as any)[key] = docMeta;
+// Converte dataUrl base64 em Blob para upload no Supabase Storage
+function base64ToBlob(base64DataUrl: string): { blob: Blob; contentType: string } | null {
+  try {
+    const parts = base64DataUrl.split(',');
+    if (parts.length < 2) return null;
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const contentType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
     }
-  });
-  return stripped;
+    return { blob: new Blob([u8arr], { type: contentType }), contentType };
+  } catch (e) {
+    console.warn('Erro ao converter base64 para Blob:', e);
+    return null;
+  }
+}
+
+// Upload individual de arquivo de documento para o Supabase Storage Bucket ('documents')
+export async function uploadDocumentFileToSupabaseStorage(
+  userId: string,
+  docKey: string,
+  doc: DocumentAttachment
+): Promise<DocumentAttachment> {
+  if (!isSupabaseConfigured || !doc || !doc.dataUrl) return doc;
+
+  // Se já for uma URL pública HTTP/HTTPS, não faz upload novamente
+  if (doc.dataUrl.startsWith('http://') || doc.dataUrl.startsWith('https://')) {
+    return doc;
+  }
+
+  // Se for base64 dataUrl
+  if (doc.dataUrl.startsWith('data:')) {
+    const converted = base64ToBlob(doc.dataUrl);
+    if (!converted) return doc;
+
+    const fileExt = doc.fileType === 'pdf' ? 'pdf' : 'jpg';
+    const cleanFileName = (doc.name || `${docKey}.${fileExt}`)
+      .replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const filePath = `${userId}/${docKey}_${cleanFileName}`;
+
+    try {
+      const { error: uploadErr } = await supabase.storage
+        .from('documents')
+        .upload(filePath, converted.blob, {
+          contentType: converted.contentType,
+          upsert: true,
+        });
+
+      if (uploadErr) {
+        console.warn(`[Supabase Storage] Erro ao enviar documento ${docKey}:`, uploadErr.message);
+        return doc;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      if (publicUrlData && publicUrlData.publicUrl) {
+        console.log(`[Supabase Storage] Documento ${docKey} salvo na nuvem com sucesso:`, publicUrlData.publicUrl);
+        return {
+          ...doc,
+          dataUrl: publicUrlData.publicUrl,
+        };
+      }
+    } catch (err) {
+      console.warn(`[Supabase Storage] Exceção ao enviar documento ${docKey}:`, err);
+    }
+  }
+
+  return doc;
+}
+
+export async function processAndUploadUserDocuments(user: CampaignUser): Promise<CampaignUser['documents']> {
+  if (!user.documents) return user.documents;
+  const docs = { ...user.documents };
+  const keys = Object.keys(docs) as Array<keyof typeof docs>;
+
+  for (const key of keys) {
+    const doc = docs[key];
+    if (doc && doc.dataUrl) {
+      const updatedDoc = await uploadDocumentFileToSupabaseStorage(user.id, key, doc);
+      docs[key] = updatedDoc;
+    }
+  }
+  return docs;
 }
 
 export async function syncUserToSupabase(user: CampaignUser): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   try {
+    // 1. Fazer upload dos documentos em base64 para o Supabase Storage Bucket ('documents')
+    const uploadedDocs = await processAndUploadUserDocuments(user);
+    user.documents = uploadedDocs;
+
+    // 2. Prepara objeto de documentos para a tabela SQL com URLs HTTP públicas curtas
+    const docsForDb: Record<string, any> = {};
+    if (uploadedDocs) {
+      (Object.keys(uploadedDocs) as Array<keyof typeof uploadedDocs>).forEach((k) => {
+        const d = uploadedDocs[k];
+        if (d) {
+          const isBase64 = d.dataUrl && d.dataUrl.startsWith('data:');
+          docsForDb[k] = {
+            ...d,
+            dataUrl: isBase64 ? undefined : d.dataUrl
+          };
+        }
+      });
+    }
+
     const { error } = await supabase.from('campaign_users').upsert({
       id: user.id,
       full_name: user.fullName,
@@ -488,13 +581,15 @@ export async function syncUserToSupabase(user: CampaignUser): Promise<boolean> {
       registration_type: user.registrationType || 'PROPRIO',
       ip_address: user.ipAddress || 'Não identificado',
       status: user.status,
-      documents: stripDocumentDataUrls(user.documents) as any,
+      documents: docsForDb as any,
       updated_at: new Date().toISOString()
     });
+
     if (error) {
       console.warn('Erro ao sincronizar usuário com o Supabase:', error.message);
       return false;
     }
+
     return true;
   } catch (err: any) {
     if (err?.name === 'AbortError') {

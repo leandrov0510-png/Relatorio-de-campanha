@@ -180,6 +180,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
             if (payload.eventType === 'DELETE' && payload.old?.id) {
               registerDeletedUserId(payload.old.id);
             }
+            if (payload.eventType === 'INSERT' && payload.new?.full_name) {
+              const newUser = payload.new;
+              setAdminToastMessage(`🔔 Novo cadastro em tempo real: ${newUser.full_name} (${newUser.role || 'Integrante'}) - Zona ${newUser.electoral_zone || 'N/I'}`);
+              setTimeout(() => setAdminToastMessage(null), 8000);
+            }
             refreshData();
           }
         )

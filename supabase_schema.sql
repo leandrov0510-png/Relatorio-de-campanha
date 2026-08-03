@@ -73,3 +73,33 @@ ON storage.objects FOR UPDATE USING (bucket_id = 'documents');
 CREATE POLICY "Permitir delecao de documentos" 
 ON storage.objects FOR DELETE USING (bucket_id = 'documents');
 
+
+-- 4. Tabela de Configurações do Sistema (Ex: Senha Admin Sincronizada)
+CREATE TABLE IF NOT EXISTS public.system_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Permitir leitura de configuracoes" 
+ON public.system_settings FOR SELECT USING (true);
+
+CREATE POLICY "Permitir alteracao de configuracoes" 
+ON public.system_settings FOR ALL USING (true);
+
+
+-- 5. Habilitar Supabase Realtime para Notificações Instantâneas Multidispositivo (WebSockets)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.campaign_users;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Publicacao supabase_realtime pode ser ativada diretamente no painel Supabase > Database > Realtime.';
+END $$;
+
+
