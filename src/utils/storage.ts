@@ -158,7 +158,7 @@ const SAMPLE_USERS: CampaignUser[] = [
     pixKey: '11988887777',
     whatsapp: '(11) 98888-7777',
     address: 'Rua São Bento, 450, Centro - São Paulo / SP',
-    electoralZone: '276',
+    electoralZone: '394',
     status: 'VERIFICADO',
     syncedToCloud: true,
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),

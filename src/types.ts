@@ -1,6 +1,6 @@
 export type CampaignRole = 'Coordenador' | 'Liderança' | 'Motorista' | 'Divulgador' | 'Equipe de rua';
 
-export type ElectoralZone = '176' | '185' | '276' | '278' | '279' | '393' | '395';
+export type ElectoralZone = '176' | '185' | '394' | '278' | '279' | '393' | '395';
 
 export interface DocumentAttachment {
   id: string;

@@ -204,7 +204,7 @@ export default function App() {
               Sistema de Gerenciamento de Documentos de Campanha Eleitoral &copy; {new Date().getFullYear()}
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3 text-slate-400 text-xs">
-              <span>Zonas: 176, 185, 276, 278, 393, 395</span>
+              <span>Zonas: 176, 185, 394, 278, 393, 395</span>
               <span>|</span>
               <span>Sincronização em Nuvem</span>
               <span>|</span>

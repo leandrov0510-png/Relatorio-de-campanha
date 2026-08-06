@@ -395,7 +395,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onOpenRegister
   };
 
   // Electoral Zone statistics
-  const ZONES: ElectoralZone[] = ['176', '185', '276', '278', '279', '393', '395'];
+  const ZONES: ElectoralZone[] = ['176', '185', '394', '278', '279', '393', '395'];
   const zoneCounts = ZONES.map((z) => ({
     zone: z,
     count: users.filter((u) => u.electoralZone === z).length,

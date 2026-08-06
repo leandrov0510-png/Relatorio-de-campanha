@@ -537,7 +537,7 @@ export const RegistrationFormModal: React.FC<RegistrationFormModalProps> = ({
                     >
                       <option value="176">Zona 176</option>
                       <option value="185">Zona 185</option>
-                      <option value="276">Zona 276</option>
+                      <option value="394">Zona 394</option>
                       <option value="278">Zona 278</option>
                       <option value="279">Zona 279</option>
                       <option value="393">Zona 393</option>
